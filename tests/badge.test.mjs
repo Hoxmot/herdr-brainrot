@@ -42,11 +42,12 @@ test("each mode has its emoji", () => {
   );
 });
 
-test("the view is a 16px emoji that sends clicked", () => {
+test("the view is a 16px emoji, on a line tall enough not to clip it, that sends clicked", () => {
   const sent = [];
   const el = view({ mode: "medium" }, (message) => () => sent.push(message));
   assert.equal(textOf(el), "😎");
-  assert.deepEqual([callOf(el, "w"), callOf(el, "h"), callOf(el, "text_size")], [[16], [16], [16]]);
+  assert.deepEqual([callOf(el, "text_size"), callOf(el, "line_height")], [[16], ["20px"]]);
+  assert.equal(callOf(el, "h"), undefined, "no fixed height to clip the glyph");
   el.handlers.on_click();
   assert.deepEqual(sent, [{ type: "clicked" }]);
 });

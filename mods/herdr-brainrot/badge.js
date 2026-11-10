@@ -15,6 +15,8 @@ const DEFAULT_MODE = "medium";
 /** @type {Record<Mode, string>} */
 const EMOJI = { off: "😭", small: "🙂", medium: "😎", large: "🤯" };
 const SIZE = 16;
+// Emoji glyphs are taller than their text size, so a 16px line clips them (🤯 lost its top).
+const LINE = "20px";
 
 /** A saved mode, or Medium if there's none or it's not one we know. */
 export const modeFrom = (/** @type {unknown} */ saved) =>
@@ -47,12 +49,8 @@ export const update = (/** @type {BadgeState} */ state, /** @type {Message} */ m
 export const view = (state, send) =>
   div()
     .id("badge")
-    .w(SIZE)
-    .h(SIZE)
-    .flex()
-    .items_center()
-    .justify_center()
     .text_size(SIZE)
+    .line_height(LINE)
     .child(emojiFor(state))
     .on_click(send({ type: "clicked" }));
 
