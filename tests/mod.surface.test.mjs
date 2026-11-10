@@ -38,9 +38,10 @@ test("opening the mod opens the kept badge window and closes the launcher", asyn
   ]);
 });
 
-test("a fresh badge starts at Medium", async () => {
+test("a fresh badge starts at Medium and checks mpv", async () => {
   const { mod, cx } = await start({ role: "badge", overlay: "b" });
   assert.equal(textOf(mod.render(cx)), "😎");
+  assert.deepEqual(world.calls, [["exec", "mpv", ["--version"]]]);
 });
 
 test("the badge starts at the saved mode", async () => {
@@ -73,4 +74,28 @@ test("a preview with no props draws the badge and touches nothing", async () => 
   await click();
   assert.equal(textOf(mod.render(cx)), "🤯");
   assert.deepEqual(world.calls, []);
+});
+
+test("with mpv missing the badge shows a skull, and a click after installing it mends it", async () => {
+  world.exec = async () => Promise.reject(new Error("mpv: not found"));
+  const { mod, cx, click } = await start({ role: "badge", overlay: "b" });
+  assert.equal(textOf(mod.render(cx)), "💀");
+  await click();
+  assert.equal(textOf(mod.render(cx)), "💀", "still missing");
+  assert.equal(world.shared.get(MODE_KEY), undefined, "a click while broken doesn't cycle");
+  world.exec = async () => ({ code: 0, stdout: "mpv 0.42.0", stderr: "" });
+  await click();
+  assert.equal(textOf(mod.render(cx)), "😎");
+});
+
+test("a badge whose saving fails shows a skull", async () => {
+  const { mod, cx, click } = await start({ role: "badge", overlay: "b" });
+  world.shared = {
+    get: () => undefined,
+    set: () => {
+      throw new Error("disk full");
+    },
+  };
+  await click();
+  assert.equal(textOf(mod.render(cx)), "💀");
 });
