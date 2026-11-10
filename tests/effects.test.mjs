@@ -9,6 +9,7 @@ const recordingDeps = (overrides = {}) => {
     closeOverlay: (id) => (calls.push(["closeOverlay", id]), null),
     setShared: (key, value) => (calls.push(["setShared", key, value]), null),
     exec: async (command, args) => (calls.push(["exec", command, args]), { code: 0, stdout: "", stderr: "" }),
+    readTextFile: async (path) => (calls.push(["readTextFile", path]), path.endsWith("missing") ? null : "{}"),
     ...overrides,
   };
   return { calls, run: makeRunner(deps) };
@@ -48,6 +49,23 @@ test("exec replies not ok when the program exits non-zero", async () => {
 test("exec replies not ok when the program can't start", async () => {
   const { run } = recordingDeps({ exec: async () => Promise.reject(new Error("not found")) });
   assert.deepEqual(await run({ type: "exec", command: "mpv", args: [], reply: "checked" }), { type: "checked", ok: false });
+});
+
+test("readFile replies with the file's text", async () => {
+  const { calls, run } = recordingDeps();
+  assert.deepEqual(await run({ type: "readFile", path: "/a/settings.json", reply: "settingsRead" }), { type: "settingsRead", text: "{}" });
+  assert.deepEqual(calls, [["readTextFile", "/a/settings.json"]]);
+});
+
+test("readFile replies with null when the file is missing", async () => {
+  const { run } = recordingDeps();
+  assert.deepEqual(await run({ type: "readFile", path: "/a/missing", reply: "settingsRead" }), { type: "settingsRead", text: null });
+});
+
+test("readFile that can't read the file comes back as failed", async () => {
+  const { run } = recordingDeps({ readTextFile: async () => Promise.reject(new Error("denied")) });
+  const reply = await run({ type: "readFile", path: "/a", reply: "settingsRead" });
+  assert.equal(reply.type, "failed");
 });
 
 test("an effect that throws comes back as failed", async () => {

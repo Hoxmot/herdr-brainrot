@@ -5,7 +5,8 @@
  * @typedef {{ type: "openOverlay", spec: import("herdr").OverlaySpec }
  *   | { type: "closeOverlay", id: string }
  *   | { type: "setShared", key: string, value: unknown }
- *   | { type: "exec", command: string, args: string[], reply: string }} Effect
+ *   | { type: "exec", command: string, args: string[], reply: string }
+ *   | { type: "readFile", path: string, reply: string }} Effect
  */
 
 /** @typedef {{ type: string, [field: string]: unknown }} Message */
@@ -16,16 +17,17 @@
  * @property {(id: string) => unknown} closeOverlay
  * @property {(key: string, value: unknown) => unknown} setShared
  * @property {(command: string, args?: string[]) => Promise<import("herdr").ExecResult>} exec
+ * @property {(path: string) => Promise<string | null>} readTextFile
  */
 
 /**
  * Builds the runner. Running an effect resolves with the message to send back, or null.
  * An effect that throws comes back as `{ type: "failed" }`; `exec` replies with whether the
- * program ran and exited 0.
+ * program ran and exited 0; `readFile` replies with the file's text, or null if it's missing.
  * @param {Deps} deps
  * @returns {(effect: Effect) => Promise<Message | null>}
  */
-export const makeRunner = ({ openOverlay, closeOverlay, setShared, exec }) => {
+export const makeRunner = ({ openOverlay, closeOverlay, setShared, exec, readTextFile }) => {
   /** @type {Record<string, (effect: any) => unknown>} */
   const handlers = {
     openOverlay: ({ spec }) => void openOverlay(spec),
@@ -36,6 +38,7 @@ export const makeRunner = ({ openOverlay, closeOverlay, setShared, exec }) => {
         (result) => ({ type: reply, ok: result.code === 0 }),
         () => ({ type: reply, ok: false }),
       ),
+    readFile: ({ path, reply }) => readTextFile(path).then((text) => ({ type: reply, text })),
   };
 
   return async (effect) => {

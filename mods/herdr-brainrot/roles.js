@@ -27,13 +27,15 @@ export const withoutEffects = (program) => ({
 });
 
 /**
- * @param {any} props This copy's props().
- * @param {unknown} saved The saved mode.
+ * @param {object} setup
+ * @param {any} setup.props This copy's props().
+ * @param {unknown} setup.saved The saved mode.
+ * @param {string} setup.settingsPath Where settings.json is.
  * @returns {import("./adapter.js").Program<any>}
  */
-export const programFor = (props, saved) => {
+export const programFor = ({ props, saved, settingsPath }) => {
   const role = roleOf(props);
-  if (role === "preview") return withoutEffects(badgeProgram(saved));
-  if (role === "badge") return badgeProgram(saved);
+  if (role === "preview") return withoutEffects(badgeProgram({ saved, overlay: null, settingsPath }));
+  if (role === "badge") return badgeProgram({ saved, overlay: props.overlay, settingsPath });
   return launcherProgram(props.overlay);
 };

@@ -3,11 +3,12 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { textOf } from "gpui-kit";
-import { reset, sendCommand, world } from "herdr";
+import { HOME, reset, sendCommand, world } from "herdr";
 import Mod from "../mods/herdr-brainrot/main.js";
 import { fakeCx, flush } from "./fakes/cx.mjs";
 
 const MODE_KEY = "herdr-brainrot.mode";
+const SETTINGS = `${HOME}/settings.json`;
 
 const start = async (props) => {
   world.props = props;
@@ -38,10 +39,34 @@ test("opening the mod opens the kept badge window and closes the launcher", asyn
   ]);
 });
 
-test("a fresh badge starts at Medium and checks mpv", async () => {
+test("a fresh badge starts at Medium, reads settings and checks mpv", async () => {
   const { mod, cx } = await start({ role: "badge", overlay: "b" });
   assert.equal(textOf(mod.render(cx)), "😎");
-  assert.deepEqual(world.calls, [["exec", "mpv", ["--version"]]]);
+  assert.deepEqual(world.calls, [
+    ["readTextFile", SETTINGS],
+    ["exec", "mpv", ["--version"]],
+  ]);
+});
+
+test("a badge turned off in settings.json closes its own window", async () => {
+  world.files.set(SETTINGS, JSON.stringify({ zoom: 1, "herdr-brainrot": { enabled: false } }));
+  await start({ role: "badge", overlay: "b" });
+  assert.deepEqual(world.calls.find(([name]) => name === "closeOverlay"), ["closeOverlay", "b"]);
+});
+
+test("a badge left on in settings.json stays open", async () => {
+  world.files.set(SETTINGS, JSON.stringify({ "herdr-brainrot": { enabled: true } }));
+  await start({ role: "badge", overlay: "b" });
+  assert.equal(world.calls.find(([name]) => name === "closeOverlay"), undefined);
+});
+
+test("broken settings.json shows a skull even though mpv is fine, until it's fixed and clicked", async () => {
+  world.files.set(SETTINGS, "{ broken");
+  const { mod, cx, click } = await start({ role: "badge", overlay: "b" });
+  assert.equal(textOf(mod.render(cx)), "💀");
+  world.files.set(SETTINGS, "{}");
+  await click();
+  assert.equal(textOf(mod.render(cx)), "😎");
 });
 
 test("the badge starts at the saved mode", async () => {

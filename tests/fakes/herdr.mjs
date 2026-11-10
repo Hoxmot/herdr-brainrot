@@ -5,14 +5,18 @@ export const world = {
   shared: new Map(),
   calls: [],
   exec: async () => ({ code: 0, stdout: "", stderr: "" }),
+  files: new Map(),
   waiting: [],
 };
+
+export const HOME = "/fake/.config/herdr-app";
 
 export const reset = () => {
   world.props = null;
   world.shared = new Map();
   world.calls = [];
   world.exec = async () => ({ code: 0, stdout: "", stderr: "" });
+  world.files = new Map();
   world.waiting = [];
 };
 
@@ -39,6 +43,15 @@ export const closeOverlay = (id) => {
 export const exec = (command, args) => {
   world.calls.push(["exec", command, args]);
   return world.exec(command, args);
+};
+
+export const appHome = () => HOME;
+
+export const readTextFile = async (path) => {
+  world.calls.push(["readTextFile", path]);
+  const text = world.files.get(path);
+  if (text instanceof Error) throw text;
+  return text ?? null;
 };
 
 export const nextCommand = () => new Promise((resolve) => world.waiting.push(resolve));
